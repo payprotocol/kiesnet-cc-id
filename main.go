@@ -26,7 +26,7 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 
 	switch fn {
 	case "get":
-		return cc.get(stub)
+		return cc.get(stub, params)
 	case "list":
 		return cc.list(stub, params)
 	case "pin":
@@ -40,10 +40,16 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	return shim.Error("unknown function: '" + fn + "'")
 }
 
-func (cc *Chaincode) get(stub shim.ChaincodeStubInterface) peer.Response {
+func (cc *Chaincode) get(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	invoker, _, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
+	}
+
+	if len(params) > 0 {
+		if "text" == params[0] {
+			return shim.Success([]byte(invoker.ID))
+		}
 	}
 	return responseIdentity(invoker)
 }
