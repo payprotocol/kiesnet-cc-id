@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"github.com/hyperledger/fabric/core/chaincode/lib/cid"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -12,9 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )
-
-// PageSize _
-const PageSize = 20
 
 // IdentityStub _
 type IdentityStub struct {
@@ -57,9 +55,12 @@ func (idStub *IdentityStub) GetTransient(key string) []byte {
 
 // KID
 
+// DocTypeKID _
+const DocTypeKID = "KID"
+
 // CreateKIDCompositeKey _
 func (idStub *IdentityStub) CreateKIDCompositeKey() (string, error) {
-	return idStub.stub.CreateCompositeKey("KID", []string{idStub.cid})
+	return idStub.stub.CreateCompositeKey(DocTypeKID, []string{idStub.cid})
 }
 
 // CreateKID creates new KID and writes it into the ledger
@@ -77,6 +78,7 @@ func (idStub *IdentityStub) CreateKID() (*KID, error) {
 	pin.UpdatedTime = ts
 
 	kid := NewKID(idStub.cid + idStub.stub.GetTxID())
+	kid.DOCTYPEID = idStub.cid
 	kid.Pin = pin
 	kid.CreatedTime = ts
 
@@ -161,19 +163,26 @@ func (idStub *IdentityStub) UpdatePIN(kid *KID) error {
 
 // Certificate
 
+// DocTypeCert _
+const DocTypeCert = "CERT"
+
+// CertificatesFetchSize _
+const CertificatesFetchSize = 20
+
 // CreateCertificateCompositeKey _
 func (idStub *IdentityStub) CreateCertificateCompositeKey(sn string) (string, error) {
-	return idStub.stub.CreateCompositeKey("CERT", []string{idStub.cid, sn})
+	return idStub.stub.CreateCompositeKey(DocTypeCert, []string{idStub.cid, sn})
 }
 
 // CreateCertificate creates new certificate and writes it into the ledger
-func (idStub *IdentityStub) CreateCertificate() (*Certificate, error) {
+func (idStub *IdentityStub) CreateCertificate(kid string) (*Certificate, error) {
 	ts, err := txtime.GetTime(idStub.stub)
 	if err != nil {
 		return nil, err
 	}
 
 	cert := NewCertificate(idStub.sn)
+	cert.DOCTYPEID = kid
 	cert.CreatedTime = ts
 
 	if err = idStub.PutCertificate(cert); err != nil {
@@ -206,10 +215,12 @@ func (idStub *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 	return nil, NotRegisteredCertificateError{}
 }
 
-// QueryCertificates _
-func (idStub *IdentityStub) QueryCertificates() (*QueryResult, error) {
-	// TODO: indexing, condition (not revoked)
-	iter, meta, err := idStub.stub.GetStateByPartialCompositeKeyWithPagination("CERT", []string{idStub.cid}, PageSize, "")
+// GetQueryCertificatesResult _
+func (idStub *IdentityStub) GetQueryCertificatesResult(kid string, bookmark string) (*QueryResult, error) {
+	query := fmt.Sprintf(QueryNotRevokedCertificates, kid)
+	logger.Debugf("query => %s", query)
+
+	iter, meta, err := idStub.stub.GetQueryResultWithPagination(query, CertificatesFetchSize, bookmark)
 	if err != nil {
 		return nil, err
 	}

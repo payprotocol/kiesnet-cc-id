@@ -11,6 +11,7 @@ import (
 
 // KID _
 type KID struct {
+	DOCTYPEID   string     `json:"@kid"`
 	ID          string     `json:"id"`
 	Pin         *PIN       `json:"pin,omitempty"`
 	CreatedTime *time.Time `json:"created_time,omitempty"`

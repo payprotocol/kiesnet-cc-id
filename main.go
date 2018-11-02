@@ -28,7 +28,7 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	case "get":
 		return cc.get(stub)
 	case "list":
-		return cc.list(stub)
+		return cc.list(stub, params)
 	case "pin":
 		return cc.pin(stub)
 	case "register":
@@ -48,13 +48,18 @@ func (cc *Chaincode) get(stub shim.ChaincodeStubInterface) peer.Response {
 	return responseIdentity(invoker)
 }
 
-func (cc *Chaincode) list(stub shim.ChaincodeStubInterface) peer.Response {
-	_, idStub, err := getInvokerAndIdentityStub(stub, false)
+// params[0] : bookmark
+func (cc *Chaincode) list(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	invoker, idStub, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	res, err := idStub.QueryCertificates()
+	bookmark := ""
+	if len(params) > 0 {
+		bookmark = params[0]
+	}
+	res, err := idStub.GetQueryCertificatesResult(invoker.ID, bookmark)
 	if err != nil {
 		return responseError(err, "failed to get certificate list")
 	}
@@ -108,7 +113,7 @@ func (cc *Chaincode) register(stub shim.ChaincodeStubInterface) peer.Response {
 	}
 
 	if nil == cert { // register the certificate
-		cert, err = idStub.CreateCertificate()
+		cert, err = idStub.CreateCertificate(kid.ID)
 		if err != nil {
 			return responseError(err, "failed to register the certificate")
 		}

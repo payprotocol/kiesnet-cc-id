@@ -1,0 +1,13 @@
+{
+    "index": {
+        "partial_filter_selector": {
+            "revoked_time": {
+                "$exists": false
+            }
+        },
+        "fields": [ "@certificate" ]
+    },
+    "ddoc": "certificate",
+    "name": "not-revoked",
+    "type": "json"
+}

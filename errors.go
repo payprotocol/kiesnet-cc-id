@@ -2,7 +2,7 @@
 
 package main
 
-// IdentityError is the interface to distinguish responsible errors
+// IdentityError is the interface used to distinguish responsible errors
 type IdentityError interface {
 	IsIdentityError() bool
 }

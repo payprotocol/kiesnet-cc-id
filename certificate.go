@@ -8,6 +8,7 @@ import (
 
 // Certificate _
 type Certificate struct {
+	DOCTYPEID   string     `json:"@certificate"`
 	SN          string     `json:"sn"`
 	CreatedTime *time.Time `json:"created_time,omitempty"`
 	RevokedTime *time.Time `json:"revoked_time,omitempty"`
