@@ -1,22 +1,29 @@
 # Kiesnet Identity Chaincode
 
-> [query] __`get`__
-- Get the identity
-- If transient has PIN, it will validate PIN, or not.
+method __`func`__ arg1 arg2 _arg3_ {trs1, _trs2_}
+- method : __query__ or __invoke__
+- func : function name
+- arg : mandatory argument
+- _arg_ : optional argument
+- {trs} : mandatory transient
+- {_trs_} : optional transient
 
-> [query] __`list`__
-- Get identities list shares same Kiesnet ID (KID)
-- If transient has PIN, it will validate PIN, or not.
+#
 
-> [invoke] __`pin`__
-- Update new PIN
-- Transient must have 'pin'(current PIN) and 'new_pin'
+> query __`get`__ {_pin_}
+- Get invoker's identity({ kid, sn })
+- If {_pin_} is set, PIN validation will be perform. Or not.
 
-> [invoke] __`register`__
-- Register a identity
-- If client user has the KID, transient must have PIN.
+> query __`list`__ _bookmark_ {_pin_}
+- Get invoker's certificates list
+- If {_pin_} is set, PIN validation will be perform. Or not.
 
-> [invoke] __`revoke`__
-- Revoke a identity
-- Parameter must have a Serial Number.
-- Transient must have PIN.
+> invoke __`pin`__ {pin, new_pin}
+- Update the PIN
+
+> invoke __`register`__ {_pin_}
+- Register invoker's certificate
+- If client user has already PIN, {pin} is manaatory.
+
+> invoke __`revoke`__ serial_number {pin}
+- Revoke the certificate
