@@ -110,13 +110,10 @@ func (idStub *IdentityStub) GetKID(secure bool) (*KID, error) {
 
 		pinBytes := idStub.GetTransient("kiesnet-id/pin")
 		if pinBytes != nil || secure {
-			pinCode := string(pinBytes)
-			if kid.Pin != nil {
-				if !kid.Pin.Match(pinCode) {
+			if kid.Pin != nil { // never be false
+				if !kid.Pin.Match(string(pinBytes)) {
 					return nil, MismatchedPINError{}
 				}
-			} else if pinCode != "" { // non-PIN client
-				return nil, MismatchedPINError{}
 			}
 		}
 
