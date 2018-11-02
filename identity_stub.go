@@ -70,7 +70,7 @@ func (idStub *IdentityStub) CreateKID() (*KID, error) {
 		return nil, err
 	}
 
-	pinCode := string(idStub.GetTransient("pin"))
+	pinCode := string(idStub.GetTransient("kiesnet-id/pin"))
 	pin, err := NewPIN(pinCode)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create the PIN")
@@ -108,7 +108,7 @@ func (idStub *IdentityStub) GetKID(secure bool) (*KID, error) {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
 		}
 
-		pinBytes := idStub.GetTransient("pin")
+		pinBytes := idStub.GetTransient("kiesnet-id/pin")
 		if pinBytes != nil || secure {
 			pinCode := string(pinBytes)
 			if kid.Pin != nil {
@@ -147,7 +147,7 @@ func (idStub *IdentityStub) PutKID(kid *KID) error {
 
 // UpdatePIN _
 func (idStub *IdentityStub) UpdatePIN(kid *KID) error {
-	pinBytes := idStub.GetTransient("new_pin")
+	pinBytes := idStub.GetTransient("kiesnet-id/new_pin")
 	pin, err := NewPIN(string(pinBytes))
 	if err != nil {
 		return errors.Wrap(err, "failed to update the PIN")
