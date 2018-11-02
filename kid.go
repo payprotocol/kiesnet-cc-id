@@ -11,22 +11,22 @@ import (
 
 // KID _
 type KID struct {
-	DOCTYPEID   string     `json:"@kid"`
+	DOCTYPEID   string     `json:"@kid"` // value is CID
 	ID          string     `json:"id"`
 	Pin         *PIN       `json:"pin,omitempty"`
 	CreatedTime *time.Time `json:"created_time,omitempty"`
 }
 
-// CreateHash _
-func (kid *KID) CreateHash(id string) string {
-	h := make([]byte, 32)
-	sha3.ShakeSum256(h, []byte(id))
-	return hex.EncodeToString(h)
+// NewKID _
+func NewKID(rawID string) *KID {
+	kid := &KID{}
+	kid.ID = kid.CreateHash(rawID)
+	return kid
 }
 
-// NewKID _
-func NewKID(id string) *KID {
-	kid := &KID{}
-	kid.ID = kid.CreateHash(id)
-	return kid
+// CreateHash _
+func (kid *KID) CreateHash(rawID string) string {
+	h := make([]byte, 32)
+	sha3.ShakeSum256(h, []byte(rawID))
+	return hex.EncodeToString(h)
 }

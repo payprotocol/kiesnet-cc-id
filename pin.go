@@ -19,18 +19,6 @@ type PIN struct {
 	UpdatedTime *time.Time `json:"updated_time,omitempty"`
 }
 
-// CreateHash _
-func (pin *PIN) CreateHash(code string) string {
-	h := make([]byte, 32)
-	sha3.ShakeSum256(h, []byte(pin.Salt+"|"+code))
-	return hex.EncodeToString(h)
-}
-
-// Match _
-func (pin *PIN) Match(code string) bool {
-	return (pin.CreateHash(code) == pin.Hash)
-}
-
 // NewPIN _
 func NewPIN(code string) (*PIN, error) {
 	salt := make([]byte, 32)
@@ -44,4 +32,16 @@ func NewPIN(code string) (*PIN, error) {
 	pin.Hash = pin.CreateHash(code)
 
 	return pin, nil
+}
+
+// CreateHash _
+func (pin *PIN) CreateHash(code string) string {
+	h := make([]byte, 32)
+	sha3.ShakeSum256(h, []byte(pin.Salt+"|"+code))
+	return hex.EncodeToString(h)
+}
+
+// Match _
+func (pin *PIN) Match(code string) bool {
+	return (pin.CreateHash(code) == pin.Hash)
 }
