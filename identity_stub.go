@@ -77,16 +77,25 @@ func (idStub *IdentityStub) CreateKID() (*KID, error) {
 	}
 	pin.UpdatedTime = ts
 
-	kid := NewKID(idStub.cid + idStub.stub.GetTxID())
-	kid.DOCTYPEID = idStub.cid
+	kid := NewKID(idStub.cid, idStub.stub.GetTxID())
+
+	// check kid duplication
+	query := fmt.Sprintf(QueryKIDByID, kid)
+	iter, err := idStub.stub.GetQueryResult(query)
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+	if iter.HasNext() {
+		return nil, errors.New("oops! duplicated KID")
+	}
+
 	kid.Pin = pin
 	kid.CreatedTime = ts
-
-	// TODO: check KID duplication (need indexing)
-
 	if err = idStub.PutKID(kid); err != nil {
 		return nil, err
 	}
+
 	return kid, nil
 }
 
@@ -178,13 +187,12 @@ func (idStub *IdentityStub) CreateCertificate(kid string) (*Certificate, error) 
 		return nil, err
 	}
 
-	cert := NewCertificate(idStub.sn)
-	cert.DOCTYPEID = kid
+	cert := NewCertificate(kid, idStub.sn)
 	cert.CreatedTime = ts
-
 	if err = idStub.PutCertificate(cert); err != nil {
 		return nil, err
 	}
+
 	return cert, nil
 }
 
@@ -215,8 +223,6 @@ func (idStub *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 // GetQueryCertificatesResult _
 func (idStub *IdentityStub) GetQueryCertificatesResult(kid string, bookmark string) (*QueryResult, error) {
 	query := fmt.Sprintf(QueryNotRevokedCertificates, kid)
-	logger.Debugf("query => %s", query)
-
 	iter, meta, err := idStub.stub.GetQueryResultWithPagination(query, CertificatesFetchSize, bookmark)
 	if err != nil {
 		return nil, err
