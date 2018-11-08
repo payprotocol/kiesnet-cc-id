@@ -3,8 +3,6 @@
 package main
 
 import (
-	"encoding/json"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
 )
@@ -47,7 +45,7 @@ func (cc *Chaincode) get(stub shim.ChaincodeStubInterface) peer.Response {
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
-	return responseIdentity(invoker)
+	return response(invoker)
 }
 
 func (cc *Chaincode) kid(stub shim.ChaincodeStubInterface, secure bool) peer.Response {
@@ -55,12 +53,12 @@ func (cc *Chaincode) kid(stub shim.ChaincodeStubInterface, secure bool) peer.Res
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
-	return shim.Success([]byte(invoker.ID))
+	return shim.Success([]byte(invoker.GetID()))
 }
 
 // params[0] : bookmark
 func (cc *Chaincode) list(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, idStub, err := getInvokerAndIdentityStub(stub, false)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -69,39 +67,34 @@ func (cc *Chaincode) list(stub shim.ChaincodeStubInterface, params []string) pee
 	if len(params) > 0 {
 		bookmark = params[0]
 	}
-	res, err := idStub.GetQueryCertificatesResult(invoker.ID, bookmark)
+	res, err := ib.GetQueryCertificatesResult(invoker.GetID(), bookmark)
 	if err != nil {
 		return responseError(err, "failed to get certificate list")
 	}
 
-	data, err := json.Marshal(res)
-	if err != nil {
-		logger.Debug(err.Error())
-		return shim.Error("failed to marshal certificate list")
-	}
-	return shim.Success(data)
+	return response(res)
 }
 
 func (cc *Chaincode) pin(stub shim.ChaincodeStubInterface) peer.Response {
-	invoker, idStub, err := getInvokerAndIdentityStub(stub, true)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	if err = idStub.UpdatePIN(invoker.KID()); err != nil {
+	if err = ib.UpdatePIN(invoker.KID()); err != nil {
 		return responseError(err, "failed to update the PIN")
 	}
 
-	return responseIdentity(invoker)
+	return response(invoker)
 }
 
 func (cc *Chaincode) register(stub shim.ChaincodeStubInterface) peer.Response {
-	idStub, err := NewIdentityStub(stub)
+	ib, err := NewIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	cert, err := idStub.GetCertificate("")
+	cert, err := ib.GetCertificate("")
 	if err != nil {
 		if _, ok := err.(NotRegisteredCertificateError); !ok {
 			return responseError(err, "failed to register the certificate")
@@ -110,27 +103,26 @@ func (cc *Chaincode) register(stub shim.ChaincodeStubInterface) peer.Response {
 		return responseError(err, "failed to register the certificate")
 	}
 
-	kid, err := idStub.GetKID(true) // check PIN
+	kid, err := ib.GetKID(true) // check PIN
 	if err != nil {
 		if _, ok := err.(NotRegisteredCertificateError); !ok {
 			return responseError(err, "failed to get the invoker's KID")
 		}
 		// create new KID
-		kid, err = idStub.CreateKID()
+		kid, err = ib.CreateKID()
 		if err != nil {
 			return responseError(err, "failed to create new KID")
 		}
 	}
 
 	if nil == cert { // register the certificate
-		cert, err = idStub.CreateCertificate(kid.ID)
+		cert, err = ib.CreateCertificate(kid.ID)
 		if err != nil {
 			return responseError(err, "failed to register the certificate")
 		}
 	}
 
-	identity := NewIdentity(kid, cert)
-	return responseIdentity(identity)
+	return response(NewIdentity(kid, cert))
 }
 
 // params[0] : Serial Number
@@ -139,14 +131,14 @@ func (cc *Chaincode) revoke(stub shim.ChaincodeStubInterface, params []string) p
 		return shim.Error("incorrect number of parameters. expecting 1")
 	}
 
-	_, idStub, err := getInvokerAndIdentityStub(stub, true)
+	_, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
 	// ISSUE: have to prevent self-revoking ?
 	sn := params[0]
-	revokee, err := idStub.GetCertificate(sn)
+	revokee, err := ib.GetCertificate(sn)
 	if err != nil {
 		return responseError(err, "failed to get the certificate to be revoked")
 	}
@@ -154,43 +146,40 @@ func (cc *Chaincode) revoke(stub shim.ChaincodeStubInterface, params []string) p
 		return shim.Error("already revoked certificate")
 	}
 
-	if err = idStub.RevokeCertificate(revokee); err != nil {
+	if err = ib.RevokeCertificate(revokee); err != nil {
 		return responseError(err, "failed to revoke the certificate")
 	}
 
-	data, err := json.Marshal(revokee)
-	if err != nil {
-		logger.Debug(err.Error())
-		return shim.Error("failed to marshal the certificate")
-	}
-	return shim.Success(data)
+	return response(revokee)
 }
 
 // returns invoker's Identity and IdentityStub
 func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*Identity, *IdentityStub, error) {
-	idStub, err := NewIdentityStub(stub)
+	ib, err := NewIdentityStub(stub)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	identity := &Identity{}
-
-	cert, err := idStub.GetCertificate("")
+	cert, err := ib.GetCertificate("")
 	if err != nil {
-		return nil, idStub, err
+		return nil, ib, err
 	}
 	if err = cert.Validate(); err != nil {
-		return nil, idStub, err
+		return nil, ib, err
 	}
-	identity.SetCertificate(cert)
 
-	kid, err := idStub.GetKID(secure)
+	kid, err := ib.GetKID(secure)
 	if err != nil {
-		return nil, idStub, err
+		return nil, ib, err
 	}
-	identity.SetKID(kid)
 
-	return identity, idStub, nil
+	return NewIdentity(kid, cert), ib, nil
+}
+
+// Payload _
+type Payload interface {
+	// MarshalPayload returns bytes array for response payload
+	MarshalPayload() ([]byte, error)
 }
 
 // If 'err' is IdentityError, it will add err's message to the 'msg'.
@@ -202,11 +191,11 @@ func responseError(err error, msg string) peer.Response {
 	return shim.Error(msg)
 }
 
-func responseIdentity(identity *Identity) peer.Response {
-	data, err := json.Marshal(identity)
+func response(payload Payload) peer.Response {
+	data, err := payload.MarshalPayload()
 	if err != nil {
 		logger.Debug(err.Error())
-		return shim.Error("failed to marshal the identity")
+		return shim.Error("failed to marshal payload")
 	}
 	return shim.Success(data)
 }

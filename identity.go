@@ -2,11 +2,10 @@
 
 package main
 
+import "encoding/json"
+
 // Identity _
 type Identity struct {
-	ID string `json:"id"`
-	SN string `json:"sn"`
-
 	kid  *KID
 	cert *Certificate
 }
@@ -14,8 +13,8 @@ type Identity struct {
 // NewIdentity _
 func NewIdentity(kid *KID, cert *Certificate) *Identity {
 	identity := &Identity{}
-	identity.SetKID(kid)
-	identity.SetCertificate(cert)
+	identity.kid = kid
+	identity.cert = cert
 	return identity
 }
 
@@ -29,14 +28,26 @@ func (identity *Identity) Certificate() *Certificate {
 	return identity.cert
 }
 
-// SetKID _
-func (identity *Identity) SetKID(kid *KID) {
-	identity.kid = kid
-	identity.ID = kid.ID
+// GetID _
+func (identity *Identity) GetID() string {
+	if identity.kid != nil {
+		return identity.kid.ID
+	}
+	return ""
 }
 
-// SetCertificate _
-func (identity *Identity) SetCertificate(cert *Certificate) {
-	identity.cert = cert
-	identity.SN = cert.SN
+// GetSN _
+func (identity *Identity) GetSN() string {
+	if identity.cert != nil {
+		return identity.cert.SN
+	}
+	return ""
+}
+
+// MarshalPayload _
+func (identity *Identity) MarshalPayload() ([]byte, error) {
+	return json.Marshal(&struct {
+		ID string `json:"id"`
+		SN string `json:"sn"`
+	}{ID: identity.GetID(), SN: identity.GetSN()})
 }

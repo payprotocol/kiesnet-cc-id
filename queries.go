@@ -11,10 +11,10 @@ package main
 			"$exists": false
 		}
 	},
-	"use_index": "certificate"
+	"use_index": ["certificate", "not-revoked"]
 }
 */
-const QueryNotRevokedCertificates = `{"selector":{"@certificate":"%s","revoke_time":{"$exists":false}},"use_index":"certificate"}`
+const QueryNotRevokedCertificates = `{"selector":{"@certificate":"%s","revoke_time":{"$exists":false}},"use_index":["certificate","not-revoked"]}`
 
 // QueryKIDByID _
 /*
@@ -26,7 +26,7 @@ const QueryNotRevokedCertificates = `{"selector":{"@certificate":"%s","revoke_ti
 		"id": "%s"
 	},
 	"limit": 1,
-	"use_index": "kid"
+	"use_index": ["kid", "id"]
 }
 */
-const QueryKIDByID = `{"selector":{"@kid":{"$exists":true},"id":"%s"},"limit":1,"use_index":"kid"}`
+const QueryKIDByID = `{"selector":{"@kid":{"$exists":true},"id":"%s"},"limit":1,"use_index":["kid","id"]}`

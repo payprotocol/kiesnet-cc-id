@@ -47,8 +47,8 @@ func NewQueryResult(meta *peer.QueryResponseMetadata, iter shim.StateQueryIterat
 	return result, nil
 }
 
-// MarshalJSON _
-func (qr *QueryResult) MarshalJSON() ([]byte, error) {
+// MarshalPayload _
+func (qr *QueryResult) MarshalPayload() ([]byte, error) {
 	var err error
 	buf := bytes.NewBufferString("{")
 	if qr.Meta != nil {

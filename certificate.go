@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -28,4 +29,9 @@ func (cert *Certificate) Validate() error {
 		return RevokedCertificateError{}
 	}
 	return nil
+}
+
+// MarshalPayload _
+func (cert *Certificate) MarshalPayload() ([]byte, error) {
+	return json.Marshal(cert)
 }

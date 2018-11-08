@@ -39,18 +39,18 @@ func NewIdentityStub(stub shim.ChaincodeStubInterface) (*IdentityStub, error) {
 	h := make([]byte, 32)                           // id hash bytes
 	sha3.ShakeSum256(h, []byte(id))
 
-	idStub := &IdentityStub{}
-	idStub.stub = stub
-	idStub.cid = hex.EncodeToString(h)
-	idStub.sn = hex.EncodeToString(cert.SerialNumber.Bytes())
-	idStub.transients = transients
+	ib := &IdentityStub{}
+	ib.stub = stub
+	ib.cid = hex.EncodeToString(h)
+	ib.sn = hex.EncodeToString(cert.SerialNumber.Bytes())
+	ib.transients = transients
 
-	return idStub, nil
+	return ib, nil
 }
 
 // GetTransient _
-func (idStub *IdentityStub) GetTransient(key string) []byte {
-	return idStub.transients[key]
+func (ib *IdentityStub) GetTransient(key string) []byte {
+	return ib.transients[key]
 }
 
 // KID
@@ -59,29 +59,29 @@ func (idStub *IdentityStub) GetTransient(key string) []byte {
 const DocTypeKID = "KID"
 
 // CreateKIDCompositeKey _
-func (idStub *IdentityStub) CreateKIDCompositeKey() (string, error) {
-	return idStub.stub.CreateCompositeKey(DocTypeKID, []string{idStub.cid})
+func (ib *IdentityStub) CreateKIDCompositeKey() (string, error) {
+	return ib.stub.CreateCompositeKey(DocTypeKID, []string{ib.cid})
 }
 
 // CreateKID creates new KID and writes it into the ledger
-func (idStub *IdentityStub) CreateKID() (*KID, error) {
-	ts, err := txtime.GetTime(idStub.stub)
+func (ib *IdentityStub) CreateKID() (*KID, error) {
+	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
 		return nil, err
 	}
 
-	pinCode := string(idStub.GetTransient("kiesnet-id/pin"))
+	pinCode := string(ib.GetTransient("kiesnet-id/pin"))
 	pin, err := NewPIN(pinCode)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create the PIN")
 	}
 	pin.UpdatedTime = ts
 
-	kid := NewKID(idStub.cid, idStub.stub.GetTxID())
+	kid := NewKID(ib.cid, ib.stub.GetTxID())
 
 	// check kid duplication
 	query := fmt.Sprintf(QueryKIDByID, kid)
-	iter, err := idStub.stub.GetQueryResult(query)
+	iter, err := ib.stub.GetQueryResult(query)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (idStub *IdentityStub) CreateKID() (*KID, error) {
 
 	kid.Pin = pin
 	kid.CreatedTime = ts
-	if err = idStub.PutKID(kid); err != nil {
+	if err = ib.PutKID(kid); err != nil {
 		return nil, err
 	}
 
@@ -101,13 +101,13 @@ func (idStub *IdentityStub) CreateKID() (*KID, error) {
 
 // GetKID retrieves the KID from the ledger.
 // If 'secure' is true, 'pin' must be in transient map.
-func (idStub *IdentityStub) GetKID(secure bool) (*KID, error) {
-	key, err := idStub.CreateKIDCompositeKey()
+func (ib *IdentityStub) GetKID(secure bool) (*KID, error) {
+	key, err := ib.CreateKIDCompositeKey()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create the KID composite key")
 	}
 
-	data, err := idStub.stub.GetState(key)
+	data, err := ib.stub.GetState(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the KID state")
 	}
@@ -117,7 +117,7 @@ func (idStub *IdentityStub) GetKID(secure bool) (*KID, error) {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
 		}
 
-		pinBytes := idStub.GetTransient("kiesnet-id/pin")
+		pinBytes := ib.GetTransient("kiesnet-id/pin")
 		if pinBytes != nil || secure {
 			if kid.Pin != nil { // never be false
 				if !kid.Pin.Match(string(pinBytes)) {
@@ -133,8 +133,8 @@ func (idStub *IdentityStub) GetKID(secure bool) (*KID, error) {
 }
 
 // PutKID writes the KID into the ledger
-func (idStub *IdentityStub) PutKID(kid *KID) error {
-	key, err := idStub.CreateKIDCompositeKey()
+func (ib *IdentityStub) PutKID(kid *KID) error {
+	key, err := ib.CreateKIDCompositeKey()
 	if err != nil {
 		return errors.Wrap(err, "failed to create the KID composite key")
 	}
@@ -144,7 +144,7 @@ func (idStub *IdentityStub) PutKID(kid *KID) error {
 		return errors.Wrap(err, "failed to marshal the KID")
 	}
 
-	err = idStub.stub.PutState(key, data)
+	err = ib.stub.PutState(key, data)
 	if err != nil {
 		return errors.Wrap(err, "failed to put the KID state")
 	}
@@ -152,19 +152,19 @@ func (idStub *IdentityStub) PutKID(kid *KID) error {
 }
 
 // UpdatePIN _
-func (idStub *IdentityStub) UpdatePIN(kid *KID) error {
-	pinBytes := idStub.GetTransient("kiesnet-id/new_pin")
+func (ib *IdentityStub) UpdatePIN(kid *KID) error {
+	pinBytes := ib.GetTransient("kiesnet-id/new_pin")
 	pin, err := NewPIN(string(pinBytes))
 	if err != nil {
 		return errors.Wrap(err, "failed to update the PIN")
 	}
-	pin.UpdatedTime, err = txtime.GetTime(idStub.stub)
+	pin.UpdatedTime, err = txtime.GetTime(ib.stub)
 	if err != nil {
 		return errors.Wrap(err, "failed to update the PIN")
 	}
 
 	kid.Pin = pin
-	return idStub.PutKID(kid)
+	return ib.PutKID(kid)
 }
 
 // Certificate
@@ -176,20 +176,20 @@ const DocTypeCert = "CERT"
 const CertificatesFetchSize = 20
 
 // CreateCertificateCompositeKey _
-func (idStub *IdentityStub) CreateCertificateCompositeKey(sn string) (string, error) {
-	return idStub.stub.CreateCompositeKey(DocTypeCert, []string{idStub.cid, sn})
+func (ib *IdentityStub) CreateCertificateCompositeKey(sn string) (string, error) {
+	return ib.stub.CreateCompositeKey(DocTypeCert, []string{ib.cid, sn})
 }
 
 // CreateCertificate creates new certificate and writes it into the ledger
-func (idStub *IdentityStub) CreateCertificate(kid string) (*Certificate, error) {
-	ts, err := txtime.GetTime(idStub.stub)
+func (ib *IdentityStub) CreateCertificate(kid string) (*Certificate, error) {
+	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
 		return nil, err
 	}
 
-	cert := NewCertificate(kid, idStub.sn)
+	cert := NewCertificate(kid, ib.sn)
 	cert.CreatedTime = ts
-	if err = idStub.PutCertificate(cert); err != nil {
+	if err = ib.PutCertificate(cert); err != nil {
 		return nil, err
 	}
 
@@ -197,16 +197,16 @@ func (idStub *IdentityStub) CreateCertificate(kid string) (*Certificate, error) 
 }
 
 // GetCertificate retrieves the certificate from the ledger
-func (idStub *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
+func (ib *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 	if "" == sn {
-		sn = idStub.sn
+		sn = ib.sn
 	}
-	key, err := idStub.CreateCertificateCompositeKey(sn)
+	key, err := ib.CreateCertificateCompositeKey(sn)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create the certificate composite key")
 	}
 
-	data, err := idStub.stub.GetState(key)
+	data, err := ib.stub.GetState(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the certificate state")
 	}
@@ -221,9 +221,9 @@ func (idStub *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 }
 
 // GetQueryCertificatesResult _
-func (idStub *IdentityStub) GetQueryCertificatesResult(kid string, bookmark string) (*QueryResult, error) {
+func (ib *IdentityStub) GetQueryCertificatesResult(kid string, bookmark string) (*QueryResult, error) {
 	query := fmt.Sprintf(QueryNotRevokedCertificates, kid)
-	iter, meta, err := idStub.stub.GetQueryResultWithPagination(query, CertificatesFetchSize, bookmark)
+	iter, meta, err := ib.stub.GetQueryResultWithPagination(query, CertificatesFetchSize, bookmark)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +233,8 @@ func (idStub *IdentityStub) GetQueryCertificatesResult(kid string, bookmark stri
 }
 
 // PutCertificate writes the certificate into the ledger
-func (idStub *IdentityStub) PutCertificate(cert *Certificate) error {
-	key, err := idStub.CreateCertificateCompositeKey(cert.SN)
+func (ib *IdentityStub) PutCertificate(cert *Certificate) error {
+	key, err := ib.CreateCertificateCompositeKey(cert.SN)
 	if err != nil {
 		return errors.Wrap(err, "failed to create the certificate composite key")
 	}
@@ -244,7 +244,7 @@ func (idStub *IdentityStub) PutCertificate(cert *Certificate) error {
 		return errors.Wrap(err, "failed to marshal the certificate")
 	}
 
-	err = idStub.stub.PutState(key, data)
+	err = ib.stub.PutState(key, data)
 	if err != nil {
 		return errors.Wrap(err, "failed to put the certificate state")
 	}
@@ -252,14 +252,14 @@ func (idStub *IdentityStub) PutCertificate(cert *Certificate) error {
 }
 
 // RevokeCertificate revokes the certificate and writes it into the ledger
-func (idStub *IdentityStub) RevokeCertificate(cert *Certificate) error {
-	ts, err := txtime.GetTime(idStub.stub)
+func (ib *IdentityStub) RevokeCertificate(cert *Certificate) error {
+	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
 		return errors.Wrap(err, "failed to revoke the certificate")
 	}
 	cert.RevokedTime = ts
 
-	err = idStub.PutCertificate(cert)
+	err = ib.PutCertificate(cert)
 	if err != nil {
 		return errors.Wrap(err, "failed to revoke the certificate")
 	}
