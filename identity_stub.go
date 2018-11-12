@@ -138,14 +138,11 @@ func (ib *IdentityStub) PutKID(kid *KID) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create the KID composite key")
 	}
-
 	data, err := json.Marshal(kid)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the KID")
 	}
-
-	err = ib.stub.PutState(key, data)
-	if err != nil {
+	if err = ib.stub.PutState(key, data); err != nil {
 		return errors.Wrap(err, "failed to put the KID state")
 	}
 	return nil
@@ -238,14 +235,11 @@ func (ib *IdentityStub) PutCertificate(cert *Certificate) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create the certificate composite key")
 	}
-
 	data, err := json.Marshal(cert)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the certificate")
 	}
-
-	err = ib.stub.PutState(key, data)
-	if err != nil {
+	if err = ib.stub.PutState(key, data); err != nil {
 		return errors.Wrap(err, "failed to put the certificate state")
 	}
 	return nil
@@ -258,9 +252,7 @@ func (ib *IdentityStub) RevokeCertificate(cert *Certificate) error {
 		return errors.Wrap(err, "failed to revoke the certificate")
 	}
 	cert.RevokedTime = ts
-
-	err = ib.PutCertificate(cert)
-	if err != nil {
+	if err = ib.PutCertificate(cert); err != nil {
 		return errors.Wrap(err, "failed to revoke the certificate")
 	}
 	return nil
