@@ -21,26 +21,27 @@ func (cc *Chaincode) Init(stub shim.ChaincodeStubInterface) peer.Response {
 // Invoke implements shim.Chaincode interface.
 func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	fn, params := stub.GetFunctionAndParameters()
-
-	switch fn {
-	case "get":
-		return cc.get(stub)
-	case "kid":
-		return cc.kid(stub, (len(params) > 0 && params[0] != ""))
-	case "list":
-		return cc.list(stub, params)
-	case "pin":
-		return cc.pin(stub)
-	case "register":
-		return cc.register(stub)
-	case "revoke":
-		return cc.revoke(stub, params)
+	if txFn := routes[fn]; txFn != nil {
+		return txFn(stub, params)
 	}
-
 	return shim.Error("unknown function: '" + fn + "'")
 }
 
-func (cc *Chaincode) get(stub shim.ChaincodeStubInterface) peer.Response {
+// TxFunc _
+type TxFunc func(shim.ChaincodeStubInterface, []string) peer.Response
+
+// routes is the map of invoke functions
+var routes = map[string]TxFunc{
+	"get":      txGet,
+	"kid":      txKid,
+	"list":     txList,
+	"pin":      txPin,
+	"register": txRegister,
+	"revoke":   txRevoke,
+	"ver":      txVer,
+}
+
+func txGet(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	invoker, _, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
@@ -48,7 +49,8 @@ func (cc *Chaincode) get(stub shim.ChaincodeStubInterface) peer.Response {
 	return response(invoker)
 }
 
-func (cc *Chaincode) kid(stub shim.ChaincodeStubInterface, secure bool) peer.Response {
+func txKid(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	secure := (len(params) > 0 && params[0] != "")
 	invoker, _, err := getInvokerAndIdentityStub(stub, secure)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
@@ -57,7 +59,7 @@ func (cc *Chaincode) kid(stub shim.ChaincodeStubInterface, secure bool) peer.Res
 }
 
 // params[0] : bookmark
-func (cc *Chaincode) list(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+func txList(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	invoker, ib, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
@@ -75,7 +77,7 @@ func (cc *Chaincode) list(stub shim.ChaincodeStubInterface, params []string) pee
 	return response(res)
 }
 
-func (cc *Chaincode) pin(stub shim.ChaincodeStubInterface) peer.Response {
+func txPin(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
@@ -88,7 +90,7 @@ func (cc *Chaincode) pin(stub shim.ChaincodeStubInterface) peer.Response {
 	return response(invoker)
 }
 
-func (cc *Chaincode) register(stub shim.ChaincodeStubInterface) peer.Response {
+func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	ib, err := NewIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
@@ -125,8 +127,12 @@ func (cc *Chaincode) register(stub shim.ChaincodeStubInterface) peer.Response {
 	return response(NewIdentity(kid, cert))
 }
 
+func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	return shim.Success([]byte("Kiesnet ID v1.0 created by Key Inside Co., Ltd."))
+}
+
 // params[0] : Serial Number
-func (cc *Chaincode) revoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	if len(params) != 1 {
 		return shim.Error("incorrect number of parameters. expecting 1")
 	}
@@ -174,12 +180,6 @@ func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*
 	}
 
 	return NewIdentity(kid, cert), ib, nil
-}
-
-// Payload _
-type Payload interface {
-	// MarshalPayload returns bytes array for response payload
-	MarshalPayload() ([]byte, error)
 }
 
 // If 'err' is IdentityError, it will add err's message to the 'msg'.
