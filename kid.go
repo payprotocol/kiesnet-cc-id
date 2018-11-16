@@ -18,7 +18,7 @@ type KID struct {
 }
 
 // NewKID _
-func NewKID(cid string, nonce string) *KID {
+func NewKID(cid, nonce string) *KID {
 	kid := &KID{}
 	kid.DOCTYPEID = cid
 	kid.ID = kid.CreateHash(cid + nonce)

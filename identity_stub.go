@@ -218,7 +218,7 @@ func (ib *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 }
 
 // GetQueryCertificatesResult _
-func (ib *IdentityStub) GetQueryCertificatesResult(kid string, bookmark string) (*QueryResult, error) {
+func (ib *IdentityStub) GetQueryCertificatesResult(kid, bookmark string) (*QueryResult, error) {
 	query := fmt.Sprintf(QueryNotRevokedCertificates, kid)
 	iter, meta, err := ib.stub.GetQueryResultWithPagination(query, CertificatesFetchSize, bookmark)
 	if err != nil {

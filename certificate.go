@@ -16,11 +16,11 @@ type Certificate struct {
 }
 
 // NewCertificate _
-func NewCertificate(kid string, sn string) *Certificate {
-	cert := &Certificate{}
-	cert.DOCTYPEID = kid
-	cert.SN = sn
-	return cert
+func NewCertificate(kid, sn string) *Certificate {
+	return &Certificate{
+		DOCTYPEID: kid,
+		SN:        sn,
+	}
 }
 
 // Validate _

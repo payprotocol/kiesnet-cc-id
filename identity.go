@@ -12,10 +12,10 @@ type Identity struct {
 
 // NewIdentity _
 func NewIdentity(kid *KID, cert *Certificate) *Identity {
-	identity := &Identity{}
-	identity.kid = kid
-	identity.cert = cert
-	return identity
+	return &Identity{
+		kid:  kid,
+		cert: cert,
+	}
 }
 
 // KID _
