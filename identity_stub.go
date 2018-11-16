@@ -55,12 +55,9 @@ func (ib *IdentityStub) GetTransient(key string) []byte {
 
 // KID
 
-// DocTypeKID _
-const DocTypeKID = "KID"
-
-// CreateKIDCompositeKey _
-func (ib *IdentityStub) CreateKIDCompositeKey() (string, error) {
-	return ib.stub.CreateCompositeKey(DocTypeKID, []string{ib.cid})
+// CreateKIDKey _
+func (ib *IdentityStub) CreateKIDKey() string {
+	return "KID_" + ib.cid
 }
 
 // CreateKID creates new KID and writes it into the ledger
@@ -102,12 +99,7 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 // GetKID retrieves the KID from the ledger.
 // If 'secure' is true, 'pin' must be in transient map.
 func (ib *IdentityStub) GetKID(secure bool) (*KID, error) {
-	key, err := ib.CreateKIDCompositeKey()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the KID composite key")
-	}
-
-	data, err := ib.stub.GetState(key)
+	data, err := ib.stub.GetState(ib.CreateKIDKey())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the KID state")
 	}
@@ -134,15 +126,11 @@ func (ib *IdentityStub) GetKID(secure bool) (*KID, error) {
 
 // PutKID writes the KID into the ledger
 func (ib *IdentityStub) PutKID(kid *KID) error {
-	key, err := ib.CreateKIDCompositeKey()
-	if err != nil {
-		return errors.Wrap(err, "failed to create the KID composite key")
-	}
 	data, err := json.Marshal(kid)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the KID")
 	}
-	if err = ib.stub.PutState(key, data); err != nil {
+	if err = ib.stub.PutState(ib.CreateKIDKey(), data); err != nil {
 		return errors.Wrap(err, "failed to put the KID state")
 	}
 	return nil
@@ -166,15 +154,12 @@ func (ib *IdentityStub) UpdatePIN(kid *KID) error {
 
 // Certificate
 
-// DocTypeCert _
-const DocTypeCert = "CERT"
-
 // CertificatesFetchSize _
 const CertificatesFetchSize = 20
 
-// CreateCertificateCompositeKey _
-func (ib *IdentityStub) CreateCertificateCompositeKey(sn string) (string, error) {
-	return ib.stub.CreateCompositeKey(DocTypeCert, []string{ib.cid, sn})
+// CreateCertificateKey _
+func (ib *IdentityStub) CreateCertificateKey(sn string) string {
+	return fmt.Sprintf("CERT_%s_%s", ib.cid, sn)
 }
 
 // CreateCertificate creates new certificate and writes it into the ledger
@@ -198,12 +183,7 @@ func (ib *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 	if "" == sn {
 		sn = ib.sn
 	}
-	key, err := ib.CreateCertificateCompositeKey(sn)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the certificate composite key")
-	}
-
-	data, err := ib.stub.GetState(key)
+	data, err := ib.stub.GetState(ib.CreateCertificateKey(sn))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the certificate state")
 	}
@@ -231,15 +211,11 @@ func (ib *IdentityStub) GetQueryCertificatesResult(kid, bookmark string) (*Query
 
 // PutCertificate writes the certificate into the ledger
 func (ib *IdentityStub) PutCertificate(cert *Certificate) error {
-	key, err := ib.CreateCertificateCompositeKey(cert.SN)
-	if err != nil {
-		return errors.Wrap(err, "failed to create the certificate composite key")
-	}
 	data, err := json.Marshal(cert)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the certificate")
 	}
-	if err = ib.stub.PutState(key, data); err != nil {
+	if err = ib.stub.PutState(ib.CreateCertificateKey(cert.SN), data); err != nil {
 		return errors.Wrap(err, "failed to put the certificate state")
 	}
 	return nil
