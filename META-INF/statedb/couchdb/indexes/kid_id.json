@@ -1,6 +1,6 @@
 {
     "index": {
-        "fields": [ "@kid", "id" ]
+        "fields": [ "@kid" ]
     },
     "ddoc": "kid",
     "name": "id",

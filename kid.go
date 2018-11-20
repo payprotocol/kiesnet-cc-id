@@ -12,7 +12,6 @@ import (
 // KID _
 type KID struct {
 	DOCTYPEID   string     `json:"@kid"`
-	ID          string     `json:"id"`
 	Pin         *PIN       `json:"pin,omitempty"`
 	CreatedTime *time.Time `json:"created_time,omitempty"`
 }
@@ -20,8 +19,7 @@ type KID struct {
 // NewKID _
 func NewKID(cid, nonce string) *KID {
 	kid := &KID{}
-	kid.DOCTYPEID = cid
-	kid.ID = kid.CreateHash(cid + nonce)
+	kid.DOCTYPEID = kid.CreateHash(cid + nonce)
 	return kid
 }
 

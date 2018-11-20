@@ -31,7 +31,7 @@ func (identity *Identity) Certificate() *Certificate {
 // GetID _
 func (identity *Identity) GetID() string {
 	if identity.kid != nil {
-		return identity.kid.ID
+		return identity.kid.DOCTYPEID
 	}
 	return ""
 }

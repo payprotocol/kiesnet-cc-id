@@ -11,7 +11,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/key-inside/kiesnet-ccpkg/txtime"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 )
 
 // IdentityStub _
@@ -35,13 +34,11 @@ func NewIdentityStub(stub shim.ChaincodeStubInterface) (*IdentityStub, error) {
 	}
 
 	cert, _ := clientIndentity.GetX509Certificate() // error is always nil
-	id, _ := clientIndentity.GetID()                // error is always nil
-	h := make([]byte, 32)                           // id hash bytes
-	sha3.ShakeSum256(h, []byte(id))
+	cid, _ := clientIndentity.GetID()               // error is always nil
 
 	ib := &IdentityStub{}
 	ib.stub = stub
-	ib.cid = hex.EncodeToString(h)
+	ib.cid = cid
 	ib.sn = hex.EncodeToString(cert.SerialNumber.Bytes())
 	ib.transients = transients
 
@@ -76,15 +73,15 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 
 	kid := NewKID(ib.cid, ib.stub.GetTxID())
 
-	// check kid duplication
-	query := fmt.Sprintf(QueryKIDByID, kid)
+	// check kid collision
+	query := CreateQueryKIDByID(kid.DOCTYPEID)
 	iter, err := ib.stub.GetQueryResult(query)
 	if err != nil {
 		return nil, err
 	}
 	defer iter.Close()
 	if iter.HasNext() {
-		return nil, errors.New("oops! duplicated KID")
+		return nil, errors.New("KID collided, try again")
 	}
 
 	kid.Pin = pin
@@ -199,7 +196,7 @@ func (ib *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
 
 // GetQueryCertificatesResult _
 func (ib *IdentityStub) GetQueryCertificatesResult(kid, bookmark string) (*QueryResult, error) {
-	query := fmt.Sprintf(QueryNotRevokedCertificates, kid)
+	query := CreateQueryNotRevokedCertificates(kid)
 	iter, meta, err := ib.stub.GetQueryResultWithPagination(query, CertificatesFetchSize, bookmark)
 	if err != nil {
 		return nil, err

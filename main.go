@@ -41,6 +41,8 @@ var routes = map[string]TxFunc{
 	"ver":      txVer,
 }
 
+// tx functions
+
 func txGet(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	invoker, _, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
@@ -101,8 +103,8 @@ func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response
 		if _, ok := err.(NotRegisteredCertificateError); !ok {
 			return responseError(err, "failed to register the certificate")
 		}
-	} else if err = cert.Validate(); err != nil { // validate
-		return responseError(err, "failed to register the certificate")
+	} else {
+		return responseError(err, "already registered certificate")
 	}
 
 	kid, err := ib.GetKID(true) // check PIN
@@ -117,18 +119,12 @@ func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response
 		}
 	}
 
-	if nil == cert { // register the certificate
-		cert, err = ib.CreateCertificate(kid.ID)
-		if err != nil {
-			return responseError(err, "failed to register the certificate")
-		}
+	cert, err = ib.CreateCertificate(kid.DOCTYPEID)
+	if err != nil {
+		return responseError(err, "failed to register the certificate")
 	}
 
 	return response(NewIdentity(kid, cert))
-}
-
-func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	return shim.Success([]byte("Kiesnet ID v1.0 created by Key Inside Co., Ltd."))
 }
 
 // params[0] : Serial Number
@@ -158,6 +154,12 @@ func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 
 	return response(revokee)
 }
+
+func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	return shim.Success([]byte("Kiesnet ID v1.0 created by Key Inside Co., Ltd."))
+}
+
+// helpers
 
 // returns invoker's Identity and IdentityStub
 func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*Identity, *IdentityStub, error) {
