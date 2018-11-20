@@ -25,7 +25,7 @@ func NewKID(cid, nonce string) *KID {
 
 // CreateHash _
 func (kid *KID) CreateHash(rawID string) string {
-	h := make([]byte, 32)
+	h := make([]byte, 20)
 	sha3.ShakeSum256(h, []byte(rawID))
 	return hex.EncodeToString(h)
 }
