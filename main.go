@@ -92,6 +92,7 @@ func txPin(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	return response(invoker)
 }
 
+// ISSUE: BF attack
 func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	ib, err := NewIdentityStub(stub)
 	if err != nil {
