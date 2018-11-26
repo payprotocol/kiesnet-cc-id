@@ -105,7 +105,7 @@ func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response
 			return responseError(err, "failed to register the certificate")
 		}
 	} else {
-		return responseError(err, "already registered certificate")
+		return shim.Error("already registered certificate")
 	}
 
 	kid, err := ib.GetKID(true) // check PIN
