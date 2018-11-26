@@ -189,9 +189,9 @@ func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*
 func responseError(err error, msg string) peer.Response {
 	if nil != err {
 		logger.Debug(err.Error())
-	}
-	if _, ok := err.(IdentityError); ok {
-		msg = msg + ": " + err.Error()
+		if _, ok := err.(IdentityError); ok {
+			msg = msg + ": " + err.Error()
+		}
 	}
 	return shim.Error(msg)
 }
