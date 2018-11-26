@@ -187,7 +187,9 @@ func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*
 
 // If 'err' is IdentityError, it will add err's message to the 'msg'.
 func responseError(err error, msg string) peer.Response {
-	logger.Debug(err.Error())
+	if nil != err {
+		logger.Debug(err.Error())
+	}
 	if _, ok := err.(IdentityError); ok {
 		msg = msg + ": " + err.Error()
 	}
