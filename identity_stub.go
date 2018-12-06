@@ -61,7 +61,7 @@ func (ib *IdentityStub) CreateKIDKey() string {
 func (ib *IdentityStub) CreateKID() (*KID, error) {
 	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get the timestamp")
 	}
 
 	pinCode := string(ib.GetTransient("kiesnet-id/pin"))
@@ -163,7 +163,7 @@ func (ib *IdentityStub) CreateCertificateKey(sn string) string {
 func (ib *IdentityStub) CreateCertificate(kid string) (*Certificate, error) {
 	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get the timestamp")
 	}
 
 	cert := NewCertificate(kid, ib.sn)
@@ -222,7 +222,7 @@ func (ib *IdentityStub) PutCertificate(cert *Certificate) error {
 func (ib *IdentityStub) RevokeCertificate(cert *Certificate) error {
 	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
-		return errors.Wrap(err, "failed to revoke the certificate")
+		return errors.Wrap(err, "failed to get the timestamp")
 	}
 	cert.RevokedTime = ts
 	if err = ib.PutCertificate(cert); err != nil {

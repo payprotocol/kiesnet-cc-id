@@ -2,22 +2,22 @@
 
 package main
 
-// IdentityError is the interface used to distinguish responsible errors
-type IdentityError interface {
-	IsIdentityError() bool
+// ResponsibleError is the interface used to distinguish responsible errors
+type ResponsibleError interface {
+	IsReponsible() bool
 }
 
-// IdentityErrorImpl _
-type IdentityErrorImpl struct{}
+// ResponsibleErrorImpl _
+type ResponsibleErrorImpl struct{}
 
-// IsIdentityError _
-func (e IdentityErrorImpl) IsIdentityError() bool {
+// IsReponsible _
+func (e ResponsibleErrorImpl) IsReponsible() bool {
 	return true
 }
 
 // NotRegisteredCertificateError _
 type NotRegisteredCertificateError struct {
-	IdentityErrorImpl
+	ResponsibleErrorImpl
 }
 
 // Error implements error interface
@@ -27,7 +27,7 @@ func (e NotRegisteredCertificateError) Error() string {
 
 // RevokedCertificateError _
 type RevokedCertificateError struct {
-	IdentityErrorImpl
+	ResponsibleErrorImpl
 }
 
 // Error implements error interface
@@ -37,7 +37,7 @@ func (e RevokedCertificateError) Error() string {
 
 // MismatchedPINError _
 type MismatchedPINError struct {
-	IdentityErrorImpl
+	ResponsibleErrorImpl
 }
 
 // Error implements error interface

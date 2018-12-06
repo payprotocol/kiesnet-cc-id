@@ -185,17 +185,6 @@ func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*
 	return NewIdentity(kid, cert), ib, nil
 }
 
-// If 'err' is IdentityError, it will add err's message to the 'msg'.
-func responseError(err error, msg string) peer.Response {
-	if nil != err {
-		logger.Debug(err.Error())
-		if _, ok := err.(IdentityError); ok {
-			msg = msg + ": " + err.Error()
-		}
-	}
-	return shim.Error(msg)
-}
-
 func response(payload Payload) peer.Response {
 	data, err := payload.MarshalPayload()
 	if err != nil {
@@ -203,6 +192,21 @@ func response(payload Payload) peer.Response {
 		return shim.Error("failed to marshal payload")
 	}
 	return shim.Success(data)
+}
+
+// If 'err' is ResponsibleError, it will add err's message to the 'msg'.
+func responseError(err error, msg string) peer.Response {
+	if nil != err {
+		logger.Debug(err.Error())
+		if _, ok := err.(ResponsibleError); ok {
+			if len(msg) > 0 {
+				msg = msg + ": " + err.Error()
+			} else {
+				msg = err.Error()
+			}
+		}
+	}
+	return shim.Error(msg)
 }
 
 func main() {
