@@ -1,5 +1,7 @@
 # Kiesnet Identity Chaincode
 
+## API
+
 method __`func`__ [arg1, _arg2_, ... ] {trs1, _trs2_, ... }
 - method : __query__ or __invoke__
 - func : function name
@@ -31,3 +33,6 @@ method __`func`__ [arg1, _arg2_, ... ] {trs1, _trs2_, ... }
 
 > invoke __`revoke`__ [serial_number] {"kiesnet-id/pin"}
 - Revoke the certificate
+
+> query __`ver`__
+- Get version
