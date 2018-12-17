@@ -4,16 +4,16 @@ package main
 
 import (
 	"encoding/hex"
-	"time"
 
+	"github.com/key-inside/kiesnet-ccpkg/txtime"
 	"golang.org/x/crypto/sha3"
 )
 
 // KID _
 type KID struct {
-	DOCTYPEID   string     `json:"@kid"`
-	Pin         *PIN       `json:"pin,omitempty"`
-	CreatedTime *time.Time `json:"created_time,omitempty"`
+	DOCTYPEID   string       `json:"@kid"`
+	Pin         *PIN         `json:"pin,omitempty"`
+	CreatedTime *txtime.Time `json:"created_time,omitempty"`
 }
 
 // NewKID _

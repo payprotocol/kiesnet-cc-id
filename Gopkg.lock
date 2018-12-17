@@ -23,11 +23,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:73882e7209d49de24ddb2d2078fafc40a51c90506311ffcd678f5773b4f63fcd"
+  digest = "1:d1d432936541ccaa0b34d32026955da550886d80cee7010077967e0a190e8592"
   name = "github.com/key-inside/kiesnet-ccpkg"
   packages = ["txtime"]
   pruneopts = "UT"
-  revision = "8310fb3fa59a1236266914952181ba57e711f52c"
+  revision = "e720d4ed827f4994ad19268eecde0228d5ef3170"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -43,7 +43,7 @@
   name = "golang.org/x/crypto"
   packages = ["sha3"]
   pruneopts = "UT"
-  revision = "3d3f9f413869b949e48070b5bc593aa22cc2b8f2"
+  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
 [solve-meta]
   analyzer-name = "dep"

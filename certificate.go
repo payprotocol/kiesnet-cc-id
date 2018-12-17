@@ -4,15 +4,16 @@ package main
 
 import (
 	"encoding/json"
-	"time"
+
+	"github.com/key-inside/kiesnet-ccpkg/txtime"
 )
 
 // Certificate _
 type Certificate struct {
-	DOCTYPEID   string     `json:"@certificate"`
-	SN          string     `json:"sn"`
-	CreatedTime *time.Time `json:"created_time,omitempty"`
-	RevokedTime *time.Time `json:"revoked_time,omitempty"`
+	DOCTYPEID   string       `json:"@certificate"`
+	SN          string       `json:"sn"`
+	CreatedTime *txtime.Time `json:"created_time,omitempty"`
+	RevokedTime *txtime.Time `json:"revoked_time,omitempty"`
 }
 
 // NewCertificate _

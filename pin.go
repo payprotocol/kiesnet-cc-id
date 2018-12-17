@@ -6,17 +6,17 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
-	"time"
 
+	"github.com/key-inside/kiesnet-ccpkg/txtime"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )
 
 // PIN _
 type PIN struct {
-	Hash        string     `json:"hash"`
-	Salt        string     `json:"salt"`
-	UpdatedTime *time.Time `json:"updated_time,omitempty"`
+	Hash        string       `json:"hash"`
+	Salt        string       `json:"salt"`
+	UpdatedTime *txtime.Time `json:"updated_time,omitempty"`
 }
 
 // NewPIN _
