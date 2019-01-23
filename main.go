@@ -99,15 +99,6 @@ func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	cert, err := ib.GetCertificate("")
-	if err != nil {
-		if _, ok := err.(NotRegisteredCertificateError); !ok {
-			return responseError(err, "failed to register the certificate")
-		}
-	} else {
-		return shim.Error("already registered certificate")
-	}
-
 	kid, err := ib.GetKID(true) // check PIN
 	if err != nil {
 		if _, ok := err.(NotRegisteredCertificateError); !ok {
@@ -118,6 +109,19 @@ func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response
 		if err != nil {
 			return responseError(err, "failed to create new KID")
 		}
+	}
+
+	cert, err := ib.GetCertificate(kid.DOCTYPEID, "")
+	if err != nil {
+		if _, ok := err.(NotRegisteredCertificateError); !ok {
+			return responseError(err, "failed to register the certificate")
+		}
+	} else {
+		// ISSUE: re-register revoked certificate
+		if err = cert.Validate(); err != nil {
+			return responseError(err, "failed to register the certificate")
+		}
+		return shim.Error("already registered certificate")
 	}
 
 	cert, err = ib.CreateCertificate(kid.DOCTYPEID)
@@ -134,14 +138,14 @@ func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 		return shim.Error("incorrect number of parameters. expecting 1")
 	}
 
-	_, ib, err := getInvokerAndIdentityStub(stub, true)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
 	// ISSUE: have to prevent self-revoking ?
 	sn := params[0]
-	revokee, err := ib.GetCertificate(sn)
+	revokee, err := ib.GetCertificate(invoker.GetID(), sn)
 	if err != nil {
 		return responseError(err, "failed to get the certificate to be revoked")
 	}
@@ -169,16 +173,16 @@ func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*
 		return nil, nil, err
 	}
 
-	cert, err := ib.GetCertificate("")
+	kid, err := ib.GetKID(secure)
+	if err != nil {
+		return nil, ib, err
+	}
+
+	cert, err := ib.GetCertificate(kid.DOCTYPEID, "")
 	if err != nil {
 		return nil, ib, err
 	}
 	if err = cert.Validate(); err != nil {
-		return nil, ib, err
-	}
-
-	kid, err := ib.GetKID(secure)
-	if err != nil {
 		return nil, ib, err
 	}
 

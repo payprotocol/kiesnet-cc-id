@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const collectionName = "kid"
+
 // IdentityStub _
 type IdentityStub struct {
 	stub       shim.ChaincodeStubInterface
@@ -96,7 +98,7 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 // GetKID retrieves the KID from the ledger.
 // If 'secure' is true, 'pin' must be in transient map.
 func (ib *IdentityStub) GetKID(secure bool) (*KID, error) {
-	data, err := ib.stub.GetState(ib.CreateKIDKey())
+	data, err := ib.stub.GetPrivateData(collectionName, ib.CreateKIDKey())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the KID state")
 	}
@@ -127,7 +129,7 @@ func (ib *IdentityStub) PutKID(kid *KID) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the KID")
 	}
-	if err = ib.stub.PutState(ib.CreateKIDKey(), data); err != nil {
+	if err = ib.stub.PutPrivateData(collectionName, ib.CreateKIDKey(), data); err != nil {
 		return errors.Wrap(err, "failed to put the KID state")
 	}
 	return nil
@@ -155,8 +157,8 @@ func (ib *IdentityStub) UpdatePIN(kid *KID) error {
 const CertificatesFetchSize = 20
 
 // CreateCertificateKey _
-func (ib *IdentityStub) CreateCertificateKey(sn string) string {
-	return fmt.Sprintf("CERT_%s_%s", ib.cid, sn)
+func (ib *IdentityStub) CreateCertificateKey(kid string, sn string) string {
+	return fmt.Sprintf("CERT_%s_%s", kid, sn)
 }
 
 // CreateCertificate creates new certificate and writes it into the ledger
@@ -176,11 +178,11 @@ func (ib *IdentityStub) CreateCertificate(kid string) (*Certificate, error) {
 }
 
 // GetCertificate retrieves the certificate from the ledger
-func (ib *IdentityStub) GetCertificate(sn string) (*Certificate, error) {
+func (ib *IdentityStub) GetCertificate(kid string, sn string) (*Certificate, error) {
 	if "" == sn {
 		sn = ib.sn
 	}
-	data, err := ib.stub.GetState(ib.CreateCertificateKey(sn))
+	data, err := ib.stub.GetState(ib.CreateCertificateKey(kid, sn))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the certificate state")
 	}
@@ -212,7 +214,7 @@ func (ib *IdentityStub) PutCertificate(cert *Certificate) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the certificate")
 	}
-	if err = ib.stub.PutState(ib.CreateCertificateKey(cert.SN), data); err != nil {
+	if err = ib.stub.PutState(ib.CreateCertificateKey(cert.DOCTYPEID, cert.SN), data); err != nil {
 		return errors.Wrap(err, "failed to put the certificate state")
 	}
 	return nil
