@@ -204,7 +204,7 @@ func responseError(err error, msg string) peer.Response {
 		logger.Debug(err.Error())
 		if _, ok := err.(ResponsibleError); ok {
 			if len(msg) > 0 {
-				msg = msg + ": " + err.Error()
+				msg = msg + "|" + err.Error()
 			} else {
 				msg = err.Error()
 			}
@@ -215,6 +215,6 @@ func responseError(err error, msg string) peer.Response {
 
 func main() {
 	if err := shim.Start(new(Chaincode)); err != nil {
-		logger.Criticalf("failed to start chaincode: %s", err)
+		logger.Criticalf("failed to start chaincode|%s", err)
 	}
 }
