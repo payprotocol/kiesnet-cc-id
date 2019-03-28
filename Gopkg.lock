@@ -22,12 +22,12 @@
   version = "v1.3.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:971af4b404198a131e2061427e37bc10f388cd3de149c22acf3af0fb7481204b"
+  digest = "1:8cd94d11830c6a8984125d473ffcb766a133f7debfc89ef575c463a1312fcd92"
   name = "github.com/key-inside/kiesnet-ccpkg"
   packages = ["txtime"]
   pruneopts = "UT"
-  revision = "c6986f6d75382599beaf16cd25feec5d9204b83a"
+  revision = "fc6b9691b8c61318fe67eb69f6a7904a6ba2ac6c"
+  version = "v0.6.2"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
