@@ -32,7 +32,7 @@ method __`func`__ [arg1, _arg2_, ... ] {trs1, _trs2_, ... }
 
 > invoke __`unlock`__
 - Unlock the identity with the invoker's certificate
-- The invoker's certificate must be the certificate which with locked the identity.
+- The invoker's certificate must be the certificate which was used to lock the identity.
 
 > query __`ver`__
 - Get version
