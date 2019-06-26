@@ -66,13 +66,6 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 		return nil, errors.Wrap(err, "failed to get the timestamp")
 	}
 
-	pinCode := string(ib.GetTransient("kiesnet-id/pin"))
-	pin, err := NewPIN(pinCode)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the PIN")
-	}
-	pin.UpdatedTime = ts
-
 	kid := NewKID(ib.cid, ib.stub.GetTxID())
 
 	// check kid collision
@@ -86,8 +79,8 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 		return nil, errors.New("KID collided, try again")
 	}
 
-	kid.Pin = pin
 	kid.CreatedTime = ts
+	kid.UpdatedTime = ts
 	if err = ib.PutKID(kid); err != nil {
 		return nil, err
 	}
@@ -96,9 +89,27 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 }
 
 // GetKID retrieves the KID from the ledger.
-// If 'secure' is true, 'pin' must be in transient map.
-func (ib *IdentityStub) GetKID(secure bool) (*KID, error) {
-	data, err := ib.stub.GetPrivateData(collectionName, ib.CreateKIDKey())
+func (ib *IdentityStub) GetKID() (*KID, error) {
+	key := ib.CreateKIDKey()
+	data, err := ib.stub.GetState(key)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get the KID state")
+	}
+	if data != nil {	// exist
+		kid := &KID{}
+		if err = json.Unmarshal(data, kid); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal the KID")
+		}
+
+		if kid.Lock != "" && kid.Lock != ib.sn {
+			return nil, NotLockedCertificateError{}
+		}
+
+		return kid, nil
+	}
+
+	// check OB
+	data, err = ib.stub.GetPrivateData(collectionName, key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the KID state")
 	}
@@ -108,17 +119,14 @@ func (ib *IdentityStub) GetKID(secure bool) (*KID, error) {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
 		}
 
-		pinBytes := ib.GetTransient("kiesnet-id/pin")
-		if pinBytes != nil || secure {
-			if kid.Pin != nil { // never be false
-				if !kid.Pin.Match(string(pinBytes)) {
-					return nil, MismatchedPINError{}
-				}
-			}
+		// migrate OB -> YB
+		if err = ib.PutKID(kid); err == nil {
+			_ = ib.stub.DelPrivateData(collectionName, key)	// ignore error
 		}
 
 		return kid, nil
 	}
+
 	// no KID = non-registered client
 	return nil, NotRegisteredCertificateError{}
 }
@@ -129,26 +137,10 @@ func (ib *IdentityStub) PutKID(kid *KID) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the KID")
 	}
-	if err = ib.stub.PutPrivateData(collectionName, ib.CreateKIDKey(), data); err != nil {
+	if err = ib.stub.PutState(ib.CreateKIDKey(), data); err != nil {
 		return errors.Wrap(err, "failed to put the KID state")
 	}
 	return nil
-}
-
-// UpdatePIN _
-func (ib *IdentityStub) UpdatePIN(kid *KID) error {
-	pinBytes := ib.GetTransient("kiesnet-id/new_pin")
-	pin, err := NewPIN(string(pinBytes))
-	if err != nil {
-		return errors.Wrap(err, "failed to update the PIN")
-	}
-	pin.UpdatedTime, err = txtime.GetTime(ib.stub)
-	if err != nil {
-		return errors.Wrap(err, "failed to update the PIN")
-	}
-
-	kid.Pin = pin
-	return ib.PutKID(kid)
 }
 
 // Certificate

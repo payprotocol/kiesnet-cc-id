@@ -44,3 +44,13 @@ type MismatchedPINError struct {
 func (e MismatchedPINError) Error() string {
 	return "mismatched PIN"
 }
+
+// NotLockedCertificateError _
+type NotLockedCertificateError struct {
+	ResponsibleErrorImpl
+}
+
+// Error implements error interface
+func (e NotLockedCertificateError) Error() string {
+	return "not locked certificate"
+}

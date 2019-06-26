@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 
 	"github.com/key-inside/kiesnet-ccpkg/txtime"
 	"golang.org/x/crypto/sha3"
@@ -12,8 +13,9 @@ import (
 // KID _
 type KID struct {
 	DOCTYPEID   string       `json:"@kid"`
-	Pin         *PIN         `json:"pin,omitempty"`
+	Lock		string       `json:"lock,omitempty"`
 	CreatedTime *txtime.Time `json:"created_time,omitempty"`
+	UpdatedTime *txtime.Time `json:"updated_time,omitempty"`
 }
 
 // NewKID _
@@ -28,4 +30,9 @@ func (kid *KID) CreateHash(rawID string) string {
 	h := make([]byte, 20)
 	sha3.ShakeSum256(h, []byte(rawID))
 	return hex.EncodeToString(h)
+}
+
+// MarshalPayload _
+func (kid *KID) MarshalPayload() ([]byte, error) {
+	return json.Marshal(kid)
 }

@@ -5,6 +5,7 @@ package main
 import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/key-inside/kiesnet-ccpkg/txtime"
 )
 
 var logger = shim.NewLogger("kiesnet-id")
@@ -35,16 +36,18 @@ var routes = map[string]TxFunc{
 	"get":      txGet,
 	"kid":      txKid,
 	"list":     txList,
+	"lock":     txLock,
 	"pin":      txPin,
 	"register": txRegister,
 	"revoke":   txRevoke,
+	"unlock":   txUnlock,
 	"ver":      txVer,
 }
 
 // tx functions
 
 func txGet(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, _, err := getInvokerAndIdentityStub(stub, false)
+	invoker, _, err := getInvokerAndIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -52,8 +55,7 @@ func txGet(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txKid(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	secure := (len(params) > 0 && params[0] != "")
-	invoker, _, err := getInvokerAndIdentityStub(stub, secure)
+	invoker, _, err := getInvokerAndIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -62,7 +64,7 @@ func txKid(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 
 // params[0] : bookmark
 func txList(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, ib, err := getInvokerAndIdentityStub(stub, false)
+	invoker, ib, err := getInvokerAndIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -79,27 +81,43 @@ func txList(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	return response(res)
 }
 
-func txPin(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
+func txLock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	invoker, ib, err := getInvokerAndIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	if err = ib.UpdatePIN(invoker.KID()); err != nil {
-		return responseError(err, "failed to update the PIN")
+	kid := invoker.KID()
+	if kid.Lock != "" {
+		return shim.Error("already locked with the certificate")
 	}
 
-	return response(invoker)
+	ts, err := txtime.GetTime(stub)
+	if err != nil {
+		return responseError(err, "failed to lock with the certificate")
+	}
+
+	kid.Lock = ib.sn
+	kid.UpdatedTime = ts
+
+	if err = ib.PutKID(kid); err != nil {
+		return responseError(err, "failed to lock with the certificate")
+	}
+
+	return response(kid)
 }
 
-// ISSUE: BF attack
+func txPin(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	return shim.Error("deprecated function")
+}
+
 func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	ib, err := NewIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	kid, err := ib.GetKID(true) // check PIN
+	kid, err := ib.GetKID()
 	if err != nil {
 		if _, ok := err.(NotRegisteredCertificateError); !ok {
 			return responseError(err, "failed to get the invoker's KID")
@@ -138,7 +156,7 @@ func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 		return shim.Error("incorrect number of parameters. expecting 1")
 	}
 
-	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
+	invoker, ib, err := getInvokerAndIdentityStub(stub)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -160,20 +178,42 @@ func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	return response(revokee)
 }
 
+func txUnlock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
+	invoker, ib, err := getInvokerAndIdentityStub(stub)
+	if err != nil {
+		return responseError(err, "failed to get the invoker's identity")
+	}
+
+	kid := invoker.KID()
+	if kid.Lock != "" {
+		ts, err := txtime.GetTime(stub)
+		if err != nil {
+			return responseError(err, "failed to unlock with the certificate")
+		}
+		kid.Lock = ""
+		kid.UpdatedTime = ts
+		if err = ib.PutKID(kid); err != nil {
+			return responseError(err, "failed to unlock with the certificate")
+		}
+	}
+
+	return response(kid)
+}
+
 func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	return shim.Success([]byte("Kiesnet ID v1.2 created by Key Inside Co., Ltd."))
+	return shim.Success([]byte("Kiesnet ID v1.3 created by Key Inside Co., Ltd."))
 }
 
 // helpers
 
 // returns invoker's Identity and IdentityStub
-func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, secure bool) (*Identity, *IdentityStub, error) {
+func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface) (*Identity, *IdentityStub, error) {
 	ib, err := NewIdentityStub(stub)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	kid, err := ib.GetKID(secure)
+	kid, err := ib.GetKID()
 	if err != nil {
 		return nil, ib, err
 	}

@@ -12,27 +12,27 @@ method __`func`__ [arg1, _arg2_, ... ] {trs1, _trs2_, ... }
 
 #
 
-> query __`get`__ {_"kiesnet-id/pin"_}
+> query __`get`__
 - Get invoker's identity { kid, sn }
-- If {_"kiesnet-id/pin"_} is set, PIN validation will be perform. Or not.
 
-> query __`kid`__ [_secure_] {_"kiesnet-id/pin"_}
+> query __`kid`__
 - Get invoker's KID
-- [_secure_] is not empty, PIN validation will be perform.
 
-> query __`list`__ [_bookmark_] {_"kiesnet-id/pin"_}
+> query __`list`__ [_bookmark_]
 - Get invoker's certificates list
-- If {_"kiesnet-id/pin"_} is set, PIN validation will be perform. Or not.
 
-> invoke __`pin`__ {"kiesnet-id/pin", "kiesnet-id/new_pin"}
-- Update the PIN
+> invoke __`lock`__
+- Lock the identity with the invoker's certificate
 
-> invoke __`register`__ {_"kiesnet-id/pin"_}
+> invoke __`register`__
 - Register invoker's certificate
-- If client user has already PIN, {"kiesnet-id/pin"} is mandatory.
 
-> invoke __`revoke`__ [serial_number] {"kiesnet-id/pin"}
+> invoke __`revoke`__ [serial_number]
 - Revoke the certificate
+
+> invoke __`unlock`__
+- Unlock the identity with the invoker's certificate
+- The invoker's certificate must be the certificate which with locked the identity.
 
 > query __`ver`__
 - Get version
