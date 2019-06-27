@@ -47,7 +47,7 @@ var routes = map[string]TxFunc{
 // tx functions
 
 func txGet(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, _, err := getInvokerAndIdentityStub(stub)
+	invoker, _, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -55,7 +55,8 @@ func txGet(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txKid(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, _, err := getInvokerAndIdentityStub(stub)
+	migr := (len(params) > 0 && params[0] != "")
+	invoker, _, err := getInvokerAndIdentityStub(stub, migr)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -64,7 +65,7 @@ func txKid(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 
 // params[0] : bookmark
 func txList(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, ib, err := getInvokerAndIdentityStub(stub)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, false)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -82,7 +83,7 @@ func txList(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txLock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, ib, err := getInvokerAndIdentityStub(stub)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -117,7 +118,7 @@ func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response
 		return responseError(err, "failed to get the invoker's identity")
 	}
 
-	kid, err := ib.GetKID()
+	kid, err := ib.GetKID(true)
 	if err != nil {
 		if _, ok := err.(NotRegisteredCertificateError); !ok {
 			return responseError(err, "failed to get the invoker's KID")
@@ -156,7 +157,7 @@ func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 		return shim.Error("incorrect number of parameters. expecting 1")
 	}
 
-	invoker, ib, err := getInvokerAndIdentityStub(stub)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -179,7 +180,7 @@ func txRevoke(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txUnlock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	invoker, ib, err := getInvokerAndIdentityStub(stub)
+	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
 	if err != nil {
 		return responseError(err, "failed to get the invoker's identity")
 	}
@@ -207,13 +208,13 @@ func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 // helpers
 
 // returns invoker's Identity and IdentityStub
-func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface) (*Identity, *IdentityStub, error) {
+func getInvokerAndIdentityStub(stub shim.ChaincodeStubInterface, migr bool) (*Identity, *IdentityStub, error) {
 	ib, err := NewIdentityStub(stub)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	kid, err := ib.GetKID()
+	kid, err := ib.GetKID(migr)
 	if err != nil {
 		return nil, ib, err
 	}
