@@ -89,7 +89,7 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 }
 
 // GetKID retrieves the KID from the ledger.
-func (ib *IdentityStub) GetKID() (*KID, error) {
+func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 	key := ib.CreateKIDKey()
 	data, err := ib.stub.GetState(key)
 	if err != nil {
@@ -119,9 +119,11 @@ func (ib *IdentityStub) GetKID() (*KID, error) {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
 		}
 
-		// migrate OB -> YB
-		if err = ib.PutKID(kid); err == nil {
-			_ = ib.stub.DelPrivateData(collectionName, key)	// ignore error
+		if migr {
+			// migrate OB -> YB
+			if err = ib.PutKID(kid); err == nil {
+				_ = ib.stub.DelPrivateData(collectionName, key)	// ignore error
+			}
 		}
 
 		return kid, nil
