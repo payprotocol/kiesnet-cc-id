@@ -89,6 +89,10 @@ func txLock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	}
 
 	kid := invoker.KID()
+	if kid.isPriv {
+		return shim.Error("not supported KID")
+	}
+
 	if kid.Lock != "" {
 		return shim.Error("already locked with the certificate")
 	}
@@ -109,7 +113,21 @@ func txLock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txPin(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	return shim.Error("deprecated function")
+	invoker, ib, err := getInvokerAndIdentityStub(stub, true)
+	if err != nil {
+		return responseError(err, "failed to get the invoker's identity")
+	}
+
+	kid := invoker.KID()
+	if !kid.isPriv {	// only old-style supported
+		return shim.Error("not supported KID")
+	}
+
+	if err = ib.UpdatePIN(kid); err != nil {
+		return responseError(err, "failed to update the PIN")
+	}
+
+	return response(invoker)
 }
 
 func txRegister(stub shim.ChaincodeStubInterface, params []string) peer.Response {
@@ -186,6 +204,10 @@ func txUnlock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 	}
 
 	kid := invoker.KID()
+	if kid.isPriv {
+		return shim.Error("not supported KID")
+	}
+
 	if kid.Lock != "" {
 		ts, err := txtime.GetTime(stub)
 		if err != nil {
@@ -202,7 +224,7 @@ func txUnlock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	return shim.Success([]byte("Kiesnet ID v1.3 created by Key Inside Co., Ltd."))
+	return shim.Success([]byte("Kiesnet ID v1.3.1 created by Key Inside Co., Ltd."))
 }
 
 // helpers

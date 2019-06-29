@@ -68,17 +68,29 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 
 	kid := NewKID(ib.cid, ib.stub.GetTxID())
 
-	// check kid collision
-	query := CreateQueryKIDByID(kid.DOCTYPEID)
-	iter, err := ib.stub.GetQueryResult(query)
-	if err != nil {
-		return nil, err
-	}
-	defer iter.Close()
-	if iter.HasNext() {
-		return nil, errors.New("KID collided, try again")
-	}
+	pinCode := string(ib.GetTransient("kiesnet-id/pin"))
+	if pinCode != "" {	// old-style
+		kid.isPriv = true	// use private-data
 
+		pin, err := NewPIN(pinCode)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create the PIN")
+		}
+		pin.UpdatedTime = ts
+		kid.Pin = pin
+	} else {	// new-style
+		// check kid collision
+		query := CreateQueryKIDByID(kid.DOCTYPEID)
+		iter, err := ib.stub.GetQueryResult(query)
+		if err != nil {
+			return nil, err
+		}
+		defer iter.Close()
+		if iter.HasNext() {
+			return nil, errors.New("KID collided, try again")
+		}
+	}
+	
 	kid.CreatedTime = ts
 	kid.UpdatedTime = ts
 	if err = ib.PutKID(kid); err != nil {
@@ -95,7 +107,7 @@ func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the KID state")
 	}
-	if data != nil {	// exist
+	if data != nil {	// exist, new-style
 		kid := &KID{}
 		if err = json.Unmarshal(data, kid); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
@@ -118,9 +130,32 @@ func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 		if err = json.Unmarshal(data, kid); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
 		}
+		kid.isPriv = true
 
-		if migr {
+		if migr {	// migr == secure(in old-version)
+			if kid.Pin != nil { // never be false
+				if !kid.Pin.Match("") {	// maintain old-style
+					pinBytes := ib.GetTransient("kiesnet-id/pin")
+					if pinBytes != nil {
+						if kid.Pin.Match(string(pinBytes)) {
+							return kid, nil
+						}
+					}
+					return nil, MismatchedPINError{}
+				}	// else migrate
+			}	// else migrate
+
 			// migrate OB -> YB
+			logger.Debugf("migration KID %s", kid.DOCTYPEID) 
+
+			ts, err := txtime.GetTime(ib.stub)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get the timestamp")
+			}
+
+			kid.isPriv = false
+			kid.Pin = nil
+			kid.UpdatedTime = ts
 			if err = ib.PutKID(kid); err == nil {
 				_ = ib.stub.DelPrivateData(collectionName, key)	// ignore error
 			}
@@ -139,10 +174,36 @@ func (ib *IdentityStub) PutKID(kid *KID) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal the KID")
 	}
-	if err = ib.stub.PutState(ib.CreateKIDKey(), data); err != nil {
-		return errors.Wrap(err, "failed to put the KID state")
+	if kid.isPriv {
+		if err = ib.stub.PutPrivateData(collectionName, ib.CreateKIDKey(), data); err != nil {
+			return errors.Wrap(err, "failed to put the KID state")
+		}
+	} else {
+		if err = ib.stub.PutState(ib.CreateKIDKey(), data); err != nil {
+			return errors.Wrap(err, "failed to put the KID state")
+		}
 	}
 	return nil
+}
+
+// UpdatePIN _
+func (ib *IdentityStub) UpdatePIN(kid *KID) error {
+	if !kid.isPriv {	// if new-style, do nothing.
+		return nil
+	}
+
+	pinBytes := ib.GetTransient("kiesnet-id/new_pin")
+	pin, err := NewPIN(string(pinBytes))
+	if err != nil {
+		return errors.Wrap(err, "failed to update the PIN")
+	}
+	pin.UpdatedTime, err = txtime.GetTime(ib.stub)
+	if err != nil {
+		return errors.Wrap(err, "failed to update the PIN")
+	}
+
+	kid.Pin = pin
+	return ib.PutKID(kid)
 }
 
 // Certificate
