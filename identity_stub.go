@@ -60,6 +60,7 @@ func (ib *IdentityStub) CreateKIDKey() string {
 }
 
 // CreateKID creates new KID and writes it into the ledger
+// ISSUE: collision check
 func (ib *IdentityStub) CreateKID() (*KID, error) {
 	ts, err := txtime.GetTime(ib.stub)
 	if err != nil {
