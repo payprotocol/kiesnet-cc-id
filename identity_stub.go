@@ -78,18 +78,7 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 		}
 		pin.UpdatedTime = ts
 		kid.Pin = pin
-	} else {	// new-style
-		// check kid collision
-		query := CreateQueryKIDByID(kid.DOCTYPEID)
-		iter, err := ib.stub.GetQueryResult(query)
-		if err != nil {
-			return nil, err
-		}
-		defer iter.Close()
-		if iter.HasNext() {
-			return nil, errors.New("KID collided, try again")
-		}
-	}
+	}	// else new-style
 	
 	kid.CreatedTime = ts
 	kid.UpdatedTime = ts
