@@ -3,9 +3,16 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/asn1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/hyperledger/fabric/core/chaincode/lib/cid"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -18,9 +25,28 @@ const collectionName = "kid"
 // IdentityStub _
 type IdentityStub struct {
 	stub       shim.ChaincodeStubInterface
-	cid        string // client id
+	uuid       string // client-id or public-key
 	sn         string // serial number
 	transients map[string][]byte
+}
+
+// pkcs1PublicKey reflects the ASN.1 structure of a PKCS#1 public key.
+type pkcs1PublicKey struct {
+	N *big.Int
+	E int
+}
+
+func getPublicKey(cert *x509.Certificate) ([]byte, error) {
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		return asn1.Marshal(pkcs1PublicKey{
+			N: pub.N,
+			E: pub.E,
+		})
+	case *ecdsa.PublicKey:
+		return elliptic.Marshal(pub.Curve, pub.X, pub.Y), nil
+	}
+	return nil, errors.New("x509: only RSA and ECDSA public keys supported")
 }
 
 // NewIdentityStub _
@@ -30,17 +56,30 @@ func NewIdentityStub(stub shim.ChaincodeStubInterface) (*IdentityStub, error) {
 		return nil, errors.Wrap(err, "failed to get transients")
 	}
 
-	clientIndentity, err := cid.New(stub)
+	clientIdentity, err := cid.New(stub)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the client identity")
 	}
 
-	cert, _ := clientIndentity.GetX509Certificate() // error is always nil
-	cid, _ := clientIndentity.GetID()               // error is always nil
+	cert, _ := clientIdentity.GetX509Certificate() // error is always nil
+	uuid := ""
+	if err := clientIdentity.AssertAttributeValue("uuid", "pubkey"); err != nil { // cid base
+		uuid, _ = clientIdentity.GetID() // error is always nil
+	} else { // public-key base
+		pbk, err := getPublicKey(cert)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get the public key")
+		}
+		if 0x04 == pbk[0] {
+			pbk = pbk[1:] // remove EC prefix
+		}
+		pbk = append([]byte("pubkey::"), pbk...)
+		uuid = base64.StdEncoding.EncodeToString(pbk)
+	}
 
 	ib := &IdentityStub{}
 	ib.stub = stub
-	ib.cid = cid
+	ib.uuid = uuid
 	ib.sn = hex.EncodeToString(cert.SerialNumber.Bytes())
 	ib.transients = transients
 
@@ -56,7 +95,7 @@ func (ib *IdentityStub) GetTransient(key string) []byte {
 
 // CreateKIDKey _
 func (ib *IdentityStub) CreateKIDKey() string {
-	return "KID_" + ib.cid
+	return "KID_" + ib.uuid
 }
 
 // CreateKID creates new KID and writes it into the ledger
@@ -67,11 +106,11 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 		return nil, errors.Wrap(err, "failed to get the timestamp")
 	}
 
-	kid := NewKID(ib.cid, ib.stub.GetTxID())
+	kid := NewKID(ib.uuid, ib.stub.GetTxID())
 
 	pinCode := string(ib.GetTransient("kiesnet-id/pin"))
-	if pinCode != "" {	// old-style
-		kid.isPriv = true	// use private-data
+	if pinCode != "" { // old-style
+		kid.isPriv = true // use private-data
 
 		pin, err := NewPIN(pinCode)
 		if err != nil {
@@ -79,8 +118,8 @@ func (ib *IdentityStub) CreateKID() (*KID, error) {
 		}
 		pin.UpdatedTime = ts
 		kid.Pin = pin
-	}	// else new-style
-	
+	} // else new-style
+
 	kid.CreatedTime = ts
 	kid.UpdatedTime = ts
 	if err = ib.PutKID(kid); err != nil {
@@ -97,7 +136,7 @@ func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the KID state")
 	}
-	if data != nil {	// exist, new-style
+	if data != nil { // exist, new-style
 		kid := &KID{}
 		if err = json.Unmarshal(data, kid); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal the KID")
@@ -122,9 +161,9 @@ func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 		}
 		kid.isPriv = true
 
-		if migr {	// migr == secure(in old-version)
+		if migr { // migr == secure(in old-version)
 			if kid.Pin != nil { // never be false
-				if !kid.Pin.Match("") {	// maintain old-style
+				if !kid.Pin.Match("") { // maintain old-style
 					pinBytes := ib.GetTransient("kiesnet-id/pin")
 					if pinBytes != nil {
 						if kid.Pin.Match(string(pinBytes)) {
@@ -132,11 +171,11 @@ func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 						}
 					}
 					return nil, MismatchedPINError{}
-				}	// else migrate
-			}	// else migrate
+				} // else migrate
+			} // else migrate
 
 			// migrate OB -> YB
-			logger.Debugf("migration KID %s", kid.DOCTYPEID) 
+			logger.Debugf("migration KID %s", kid.DOCTYPEID)
 
 			ts, err := txtime.GetTime(ib.stub)
 			if err != nil {
@@ -147,7 +186,7 @@ func (ib *IdentityStub) GetKID(migr bool) (*KID, error) {
 			kid.Pin = nil
 			kid.UpdatedTime = ts
 			if err = ib.PutKID(kid); err == nil {
-				_ = ib.stub.DelPrivateData(collectionName, key)	// ignore error
+				_ = ib.stub.DelPrivateData(collectionName, key) // ignore error
 			}
 		}
 
@@ -178,7 +217,7 @@ func (ib *IdentityStub) PutKID(kid *KID) error {
 
 // UpdatePIN _
 func (ib *IdentityStub) UpdatePIN(kid *KID) error {
-	if !kid.isPriv {	// if new-style, do nothing.
+	if !kid.isPriv { // if new-style, do nothing.
 		return nil
 	}
 

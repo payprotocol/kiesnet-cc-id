@@ -13,17 +13,17 @@ import (
 // KID _
 type KID struct {
 	DOCTYPEID   string       `json:"@kid"`
-	Lock		string       `json:"lock,omitempty"`
+	Lock        string       `json:"lock,omitempty"`
 	Pin         *PIN         `json:"pin,omitempty"`
 	CreatedTime *txtime.Time `json:"created_time,omitempty"`
 	UpdatedTime *txtime.Time `json:"updated_time,omitempty"`
-	isPriv		bool
+	isPriv      bool
 }
 
 // NewKID _
-func NewKID(cid, nonce string) *KID {
+func NewKID(uuid, nonce string) *KID {
 	kid := &KID{}
-	kid.DOCTYPEID = kid.CreateHash(cid + nonce)
+	kid.DOCTYPEID = kid.CreateHash(uuid + nonce)
 	return kid
 }
 
@@ -38,9 +38,9 @@ func (kid *KID) CreateHash(rawID string) string {
 func (kid *KID) MarshalPayload() ([]byte, error) {
 	if kid.isPriv {
 		_kid := &KID{
-			DOCTYPEID: kid.DOCTYPEID,
-			Lock: "",	// not support
-			Pin: nil,	// remove pin
+			DOCTYPEID:   kid.DOCTYPEID,
+			Lock:        "",  // not support
+			Pin:         nil, // remove pin
 			CreatedTime: kid.CreatedTime,
 			UpdatedTime: kid.UpdatedTime,
 		}
