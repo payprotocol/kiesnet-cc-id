@@ -224,7 +224,7 @@ func txUnlock(stub shim.ChaincodeStubInterface, params []string) peer.Response {
 }
 
 func txVer(stub shim.ChaincodeStubInterface, params []string) peer.Response {
-	return shim.Success([]byte("Kiesnet ID v1.3.1 created by Key Inside Co., Ltd."))
+	return shim.Success([]byte("Kiesnet ID v1.3.2 created by Key Inside Co., Ltd."))
 }
 
 // helpers
